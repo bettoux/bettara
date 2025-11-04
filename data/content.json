@@ -1,0 +1,90 @@
+{
+  "en": {
+    "home": {
+      "title": "BETTARA",
+      "subtitle": "Connecting people",
+      "description": "To self. To the other. To audiences.",
+      "cta": "Start Exploration"
+    },
+    "present": {
+      "title": "Present, pas presse",
+      "description": "<p>offers <strong>time strategy and organizational services</strong>, including <strong>personalized coaching</strong>, <strong>group workshops</strong> for organizations, and <strong>micro-communities</strong> for mutual support.</p>",
+      "cta": "Deep Dive →",
+      "placeholder": "Visual Asset Placeholder"
+    },
+    "passerelles": {
+      "venture_name": "Venture 2",
+      "title": "Passerelles",
+      "description": "<p>connects the worlds of <strong>Art and Sport</strong> to foster <strong>collaboration and unlock potential</strong>. It achieves this through three main pillars: thought leadership and content (<strong>Awareness</strong>), specialized training programs and workshops (<strong>Engagement</strong>), and building strategic alliances between major institutions (<strong>Strategic Alliances</strong>).</p><p><br></p>",
+      "cta": "Deep Dive →",
+      "placeholder": "Strategic Bridge Visual"
+    },
+    "facettes": {
+      "title": "Facettes",
+      "description": "<p>is a Speaker Bureau dedicated to connecting organizations with \"<strong>intersectional talent</strong>\" who are leaders in <strong>culture</strong>, <strong>business</strong>, and <strong>global impact</strong>. The agency offers comprehensive services beyond simple booking, including strategic <strong>content alignment</strong>, <strong>negotiation</strong>, and <strong>logistics management</strong> to ensure maximum event impact.</p>",
+      "cta": "Discover Facettes →",
+      "placeholder": "Personality & Skills Map"
+    },
+    "about": {
+      "title": "Vision & Mission",
+      "description": "<p>My <strong>vision</strong> is to be the recognized <strong>Strategic Thinker</strong> who finds profound growth and innovation by synthesizing seemingly separate worlds, believing that the greatest breakthroughs happen at their intersection. </p><p>My <strong>mission</strong> is to act as the <strong>Hub Connector</strong> and <strong>Growth Accelerator</strong>, passionately coaching and leading people to realize their full potential. I achieve this by building and leveraging intentional platforms—like the focused efficiency of <strong>Present, pas pressé</strong>, the art/sport synergy of <strong>Passerelles</strong>, and the talent networks of <strong>Facettes</strong>—to ensure <strong>lasting, positive impact</strong> and sustainable success for every individual and organization I serve.</p>",
+      "cta": "Get in Touch ↓"
+    },
+    "contact": {
+      "venture_name": "Collaborate",
+      "title": "Contact Us",
+      "name_label": "Name",
+      "name_placeholder": "Your Name",
+      "email_label": "Email",
+      "email_placeholder": "you@example.com",
+      "message_label": "Message",
+      "message_placeholder": "Tell me about your idea...",
+      "cta": "Send Message",
+      "success_message": "Message sent successfully! I'll be in touch soon."
+    }
+  },
+  "fr": {
+    "home": {
+      "title": "BETTARA",
+      "subtitle": "<p>Connecter les gens</p>",
+      "description": "<p>À soi-même. Aux autres. Au public.</p>",
+      "cta": "Commencer l'exploration"
+    },
+    "present": {
+      "title": "Présent, pas pressé",
+      "description": "<p>propose des<strong> strategies de gestion du temps et d'organisation</strong>, comprenant de l'accompagnement <strong>individuel personnalisé</strong>, des <strong>ateliers de groupes</strong> pour les organisations, et des <strong>micro-communautés</strong> de soutien mutuel.</p>",
+      "cta": "Plongée profonde →",
+      "placeholder": "Espace réservé pour l'actif visuel"
+    },
+    "passerelles": {
+      "venture_name": "Entreprise 2",
+      "title": "Passerelles",
+      "description": "<p>relie les mondes de l'<strong>Art et du Sport</strong> pour favoriser la <strong>collaboration </strong>et libérer leur <strong>potentiel</strong>. Elle s'appuie sur trois piliers principaux : la réflexion et le contenu (<strong>Sensibilisation</strong>), des programmes de formation et des ateliers spécialisés (<strong>Engagement</strong>), et la création d'alliances stratégiques entre grandes institutions (<strong>Alliances Stratégiques</strong>).</p>",
+      "cta": "Voir les projets →",
+      "placeholder": "Visuel de pont stratégique"
+    },
+    "facettes": {
+      "title": "Facettes",
+      "description": "Une célébration du professionnel aux multiples facettes. Cette entreprise explore les diverses compétences, talents et traits de personnalité qui contribuent à une carrière holistique et réussie.",
+      "cta": "Découvrir les facettes →",
+      "placeholder": "Carte de personnalité et compétences"
+    },
+    "about": {
+      "title": "Vision et mission",
+      "description": "<p>Ma vision est d'être un <strong>penseur stratégique</strong> reconnu qui creer de la croissance et de l'innovation en synthétisant des mondes apparemment distincts, convaincu que les plus grandes avancées se produisent à leur intersection.</p><p><br></p><p>Ma mission est d'agir en tant que <strong>connecteur </strong>et <strong>accélérateur de croissance</strong>, en accompagnant et en guidant avec passion les personnes afin qu'elles réalisent leur plein <strong>potentiel</strong>. Pour y parvenir, je crée et exploite des plateformes intentionnelles, telles que <strong>Present, pas pressé</strong> (Strategies de gestion du temps), <strong>Passerelles</strong> (synergies entre art et sport) et <strong>Facettes </strong>(speaker bureau), afin de garantir un <strong>impact positif durable</strong> et un succès pérenne à chaque individu et organisation que je sers.</p>",
+      "cta": "Entrer en contact ↓"
+    },
+    "contact": {
+      "venture_name": "Collaborer",
+      "title": "Nous contacter",
+      "name_label": "Nom",
+      "name_placeholder": "Votre nom",
+      "email_label": "Courriel",
+      "email_placeholder": "vous@exemple.com",
+      "message_label": "Message",
+      "message_placeholder": "Parlez-moi de votre idée...",
+      "cta": "Envoyer le message",
+      "success_message": "Message envoyé avec succès ! Je vous contacterai bientôt."
+    }
+  }
+}
