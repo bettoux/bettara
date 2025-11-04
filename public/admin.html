@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <!-- Quill Rich Text Editor -->
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <style>
+    body { background: #F4F4F3 }
+    .active-lang { background-color: #7877E6; color: white; border: none; }
+    .debug-info { 
+      background: #f8f9fa; 
+      padding: 10px; 
+      border-radius: 5px; 
+      margin-top: 20px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .nav-tabs .nav-link.active {
+      background-color: #7877E6;
+      color: white;
+      border-color: #7877E6;
+    }
+    .user-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .field-group {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #7877E6;
+    }
+    .field-group label {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    .section-indicator {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    /* Rich text editor styling */
+    .rich-editor {
+      min-height: 150px;
+      background: white;
+    }
+    .editor-container {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+    }
+    .ql-container {
+      font-size: 14px;
+    }
+    .ql-editor {
+      min-height: 120px;
+    }
+    /* Custom color palette for Quill */
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value=serif]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value=serif]::before {
+      content: 'Serif';
+      font-family: Georgia, serif;
+    }
+    .ql-snow .ql-picker.ql-font .ql-picker-label[data-value=monospace]::before,
+    .ql-snow .ql-picker.ql-font .ql-picker-item[data-value=monospace]::before {
+      content: 'Monospace';
+      font-family: 'Courier New', monospace;
+    }
+    .field-type-indicator {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-left: 8px;
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    .field-type-rich {
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+    .preview-mode {
+      display: none;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      margin-top: 10px;
+      border: 1px solid #dee2e6;
+    }
+    .preview-toggle {
+      margin-top: 5px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Admin Dashboard</h1>
+    <a href="/logout" class="btn btn-secondary">Logout</a>
+  </div>
+  
+  <!-- Navigation Tabs -->
+  <ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="content-tab" data-bs-toggle="tab" data-bs-target="#content-panel" type="button" role="tab">Content Management</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-panel" type="button" role="tab">User Management</button>
+    </li>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+    
+    <!-- CONTENT MANAGEMENT PANEL -->
+    <div class="tab-pane fade show active" id="content-panel" role="tabpanel">
+      <form id="editorForm" class="card p-4 mb-4">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Select Section</label>
+            <select id="sectionSelect" class="form-select">
+              <option value="home">Home</option>
+              <option value="present">Present, pas presse</option>
+              <option value="passerelles">Passerelles</option>
+              <option value="facettes">Facettes</option>
+              <option value="about">About</option>
+              <option value="contact">Contact</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Select Language</label>
+            <select id="langSelect" class="form-select">
+              <option value="en">English</option>
+              <option value="fr">French</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="alert alert-info">
+          <strong>💡 Rich Text Fields:</strong> Fields marked with a purple badge support formatting (bold, italic, colors, fonts).
+          <br><small>Use the toolbar to style your content. HTML will be preserved in the output.</small>
+        </div>
+        
+        <div id="dynamicFields"></div>
+        
+        <div class="mb-3">
+          <label class="form-label">Section Image (Optional)</label>
+          <input type="file" id="imageInput" class="form-control" accept="image/*">
+          <small class="text-muted">Upload an image for this section</small>
+        </div>
+        
+        <button type="button" id="saveBtn" class="btn btn-primary btn-lg">Save Changes</button>
+        <span id="saveStatus" class="ms-3"></span>
+      </form>
+      
+      <div class="debug-info">
+        <strong>Debug Info:</strong>
+        <button class="btn btn-sm btn-secondary float-end" onclick="document.getElementById('debugInfo').innerHTML = ''">Clear</button>
+        <div id="debugInfo"></div>
+      </div>
+    </div>
+
+    <!-- USER MANAGEMENT PANEL -->
+    <div class="tab-pane fade" id="users-panel" role="tabpanel">
+      <div class="card p-4 mb-4">
+        <h3 class="mb-4">Users</h3>
+        <div id="usersList" class="mb-4"></div>
+        
+        <hr class="my-4">
+        
+        <h4 class="mb-3">Add New User</h4>
+        <form id="addUserForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Username</label>
+            <input type="text" id="newUsername" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Password (min 6 characters)</label>
+            <input type="password" id="newPassword" class="form-control" required minlength="6">
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-success">Add User</button>
+            <span id="addUserStatus" class="ms-3"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Change Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="changePasswordUserId">
+        <div class="mb-3">
+          <label class="form-label">Username</label>
+          <input type="text" id="changePasswordUsername" class="form-control" readonly>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">New Password (min 6 characters)</label>
+          <input type="password" id="changePasswordInput" class="form-control" minlength="6">
+        </div>
+        <div id="changePasswordStatus"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="savePasswordBtn">Save Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Quill Rich Text Editor -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Content Management Elements
+  const sectionSelect = document.getElementById("sectionSelect");
+  const langSelect = document.getElementById("langSelect");
+  const imageInput = document.getElementById("imageInput");
+  const saveBtn = document.getElementById("saveBtn");
+  const saveStatus = document.getElementById("saveStatus");
+  const dynamicFields = document.getElementById("dynamicFields");
+  const debugInfo = document.getElementById("debugInfo");
+  
+  // User Management Elements
+  const usersList = document.getElementById("usersList");
+  const addUserForm = document.getElementById("addUserForm");
+  const addUserStatus = document.getElementById("addUserStatus");
+  const changePasswordModal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+  const savePasswordBtn = document.getElementById('savePasswordBtn');
+  
+  let currentContent = {};
+  let quillEditors = {}; // Store Quill editor instances
+
+  // Define all expected fields for each section
+  // 'rich' type enables rich text editing with formatting options
+  const sectionFields = {
+    home: [
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'subtitle', label: 'Subtitle', type: 'rich' },
+      { key: 'description', label: 'Description', type: 'rich' },
+      { key: 'cta', label: 'Call to Action Button', type: 'text' }
+    ],
+    present: [
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'description', label: 'Description', type: 'rich' },
+      { key: 'cta', label: 'Call to Action Button', type: 'text' },
+      { key: 'placeholder', label: 'Placeholder Text (optional)', type: 'text' }
+    ],
+    passerelles: [
+      { key: 'venture_name', label: 'Venture Name', type: 'text' },
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'description', label: 'Description', type: 'rich' },
+      { key: 'cta', label: 'Call to Action Button', type: 'text' },
+      { key: 'placeholder', label: 'Placeholder Text (optional)', type: 'text' }
+    ],
+    facettes: [
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'description', label: 'Description', type: 'rich' },
+      { key: 'cta', label: 'Call to Action Button', type: 'text' },
+      { key: 'placeholder', label: 'Placeholder Text (optional)', type: 'text' }
+    ],
+    about: [
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'description', label: 'Description', type: 'rich' },
+      { key: 'cta', label: 'Call to Action Button', type: 'text' }
+    ],
+    contact: [
+      { key: 'venture_name', label: 'Venture Name', type: 'text' },
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'name_label', label: 'Name Field Label', type: 'text' },
+      { key: 'name_placeholder', label: 'Name Field Placeholder', type: 'text' },
+      { key: 'email_label', label: 'Email Field Label', type: 'text' },
+      { key: 'email_placeholder', label: 'Email Field Placeholder', type: 'text' },
+      { key: 'message_label', label: 'Message Field Label', type: 'text' },
+      { key: 'message_placeholder', label: 'Message Field Placeholder', type: 'text' },
+      { key: 'cta', label: 'Submit Button Text', type: 'text' },
+      { key: 'success_message', label: 'Success Message', type: 'rich' }
+    ]
+  };
+
+  // Section color indicators
+  const sectionColors = {
+    home: '#eeeeee',
+    present: '#acc6aa',
+    passerelles: '#71a0a5',
+    facettes: '#77628c',
+    about: '#77628c',
+    contact: '#acc6aa'
+  };
+
+  function addDebugInfo(message) {
+    const timestamp = new Date().toLocaleTimeString();
+    debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+    debugInfo.scrollTop = debugInfo.scrollHeight;
+  }
+
+  // ===== CONTENT MANAGEMENT FUNCTIONS =====
+
+  async function loadContent() {
+    saveStatus.textContent = "";
+    const section = sectionSelect.value;
+    const lang = langSelect.value;
+    
+    addDebugInfo(`Loading content for section: ${section}, lang: ${lang}`);
+    
+    try {
+      const response = await fetch(`/api/content?section=${section}&lang=${lang}`);
+      
+      if (response.status === 401) {
+        addDebugInfo('Authentication failed - redirecting to login');
+        window.location.href = '/login';
+        return;
+      }
+      
+      if (response.ok) {
+        currentContent = await response.json();
+        addDebugInfo(`Content loaded: ${JSON.stringify(currentContent)}`);
+        
+        renderFields();
+        
+      } else {
+        addDebugInfo(`Error loading content: ${response.status} ${response.statusText}`);
+        dynamicFields.innerHTML = '<div class="alert alert-warning">Failed to load content</div>';
+      }
+    } catch (error) {
+      addDebugInfo(`Exception loading content: ${error.message}`);
+      console.error('Error loading content:', error);
+    }
+    
+    imageInput.value = "";
+  }
+
+  function renderFields() {
+    const section = sectionSelect.value;
+    const fields = sectionFields[section] || [];
+    
+    dynamicFields.innerHTML = '';
+    quillEditors = {}; // Reset editor instances
+    
+    // Add section indicator
+    const indicator = document.createElement('div');
+    indicator.className = 'section-indicator';
+    indicator.style.backgroundColor = sectionColors[section];
+    indicator.style.color = section === 'home' ? '#222222' : '#ffffff';
+    indicator.textContent = section.toUpperCase();
+    dynamicFields.appendChild(indicator);
+    
+    // Create fields
+    fields.forEach(field => {
+      const fieldGroup = document.createElement('div');
+      fieldGroup.className = 'field-group';
+      
+      const label = document.createElement('label');
+      label.className = 'form-label';
+      label.innerHTML = field.label;
+      
+      // Add type indicator badge
+      if (field.type === 'rich') {
+        const badge = document.createElement('span');
+        badge.className = 'field-type-indicator field-type-rich';
+        badge.textContent = 'RICH TEXT';
+        label.appendChild(badge);
+      }
+      
+      fieldGroup.appendChild(label);
+      
+      if (field.type === 'rich') {
+        // Create rich text editor
+        const editorContainer = document.createElement('div');
+        editorContainer.className = 'editor-container';
+        editorContainer.id = `editor_${field.key}`;
+        
+        const editorDiv = document.createElement('div');
+        editorDiv.className = 'rich-editor';
+        editorContainer.appendChild(editorDiv);
+        
+        fieldGroup.appendChild(editorContainer);
+        dynamicFields.appendChild(fieldGroup);
+        
+        // Initialize Quill editor
+        setTimeout(() => {
+          const quill = new Quill(`#editor_${field.key} .rich-editor`, {
+            theme: 'snow',
+            modules: {
+              toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'font': [] }],
+                [{ 'align': [] }],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link'],
+                ['clean']
+              ]
+            }
+          });
+          
+          // Set initial content (handles both plain text and HTML)
+          const content = currentContent[field.key] || '';
+          if (content.includes('<') && content.includes('>')) {
+            // It's HTML
+            quill.root.innerHTML = content;
+          } else {
+            // It's plain text
+            quill.setText(content);
+          }
+          
+          quillEditors[field.key] = quill;
+        }, 0);
+        
+      } else if (field.type === 'textarea') {
+        // Regular textarea
+        const input = document.createElement('textarea');
+        input.rows = 4;
+        input.className = 'form-control';
+        input.id = `field_${field.key}`;
+        input.value = currentContent[field.key] || '';
+        input.dataset.key = field.key;
+        
+        fieldGroup.appendChild(input);
+        dynamicFields.appendChild(fieldGroup);
+        
+      } else {
+        // Regular text input
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control';
+        input.id = `field_${field.key}`;
+        input.value = currentContent[field.key] || '';
+        input.dataset.key = field.key;
+        
+        fieldGroup.appendChild(input);
+        dynamicFields.appendChild(fieldGroup);
+      }
+    });
+    
+    // Show current image if exists
+    if (currentContent.imageUrl) {
+      const imgDiv = document.createElement('div');
+      imgDiv.className = 'field-group';
+      imgDiv.innerHTML = `
+        <label class="form-label">Current Image</label>
+        <div><img src="${currentContent.imageUrl}" alt="Current" style="max-width: 200px; max-height: 200px;" class="img-thumbnail"></div>
+      `;
+      dynamicFields.appendChild(imgDiv);
+    }
+  }
+
+  sectionSelect.addEventListener("change", loadContent);
+  langSelect.addEventListener("change", loadContent);
+
+  saveBtn.addEventListener("click", async function() {
+    const fd = new FormData();
+    const section = sectionSelect.value;
+    const lang = langSelect.value;
+    
+    fd.append("section", section);
+    fd.append("lang", lang);
+    
+    // Get values from regular inputs
+    const inputs = dynamicFields.querySelectorAll('input[data-key], textarea[data-key]');
+    const dataToSave = {};
+    inputs.forEach(input => {
+      const key = input.dataset.key;
+      if (key) {
+        fd.append(key, input.value);
+        dataToSave[key] = input.value;
+      }
+    });
+    
+    // Get values from Quill editors
+    for (const key in quillEditors) {
+      const quill = quillEditors[key];
+      const htmlContent = quill.root.innerHTML;
+      
+      // Only save if there's actual content (not just empty tags)
+      const textContent = quill.getText().trim();
+      if (textContent) {
+        fd.append(key, htmlContent);
+        dataToSave[key] = htmlContent;
+      } else {
+        fd.append(key, '');
+        dataToSave[key] = '';
+      }
+    }
+    
+    if (imageInput.files[0]) {
+      fd.append("image", imageInput.files[0]);
+      dataToSave.image = imageInput.files[0].name;
+    }
+    
+    addDebugInfo(`Saving data: ${JSON.stringify(dataToSave)}`);
+
+    try {
+      const response = await fetch("/api/content", { 
+        method: "POST", 
+        body: fd,
+        credentials: 'same-origin'
+      });
+      
+      if (response.status === 401) {
+        addDebugInfo('Authentication failed - redirecting to login');
+        window.location.href = '/login';
+        return;
+      }
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        saveStatus.textContent = "✓ Saved successfully!";
+        saveStatus.className = 'text-success ms-3 fw-bold';
+        addDebugInfo(`Save successful: ${JSON.stringify(result)}`);
+        setTimeout(() => {
+          saveStatus.textContent = "";
+        }, 2000);
+      } else {
+        saveStatus.textContent = "✗ Save failed: " + (result.error || 'Unknown error');
+        saveStatus.className = 'text-danger ms-3 fw-bold';
+        addDebugInfo(`Save failed: ${JSON.stringify(result)}`);
+      }
+    } catch (error) {
+      saveStatus.textContent = "✗ Save failed: " + error.message;
+      saveStatus.className = 'text-danger ms-3 fw-bold';
+      addDebugInfo(`Exception saving: ${error.message}`);
+      console.error('Error saving:', error);
+    }
+  });
+
+  // ===== USER MANAGEMENT FUNCTIONS =====
+
+  async function loadUsers() {
+    try {
+      const response = await fetch('/api/users', { credentials: 'same-origin' });
+      
+      if (response.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        usersList.innerHTML = '';
+        data.users.forEach(user => {
+          const userDiv = document.createElement('div');
+          userDiv.className = 'user-item';
+          userDiv.innerHTML = `
+            <div>
+              <strong>${user.username}</strong>
+              <small class="text-muted ms-2">(ID: ${user.id})</small>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-warning me-2" onclick="openChangePassword('${user.id}', '${user.username}')">
+                Change Password
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteUser('${user.id}', '${user.username}')">
+                Delete
+              </button>
+            </div>
+          `;
+          usersList.appendChild(userDiv);
+        });
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+      usersList.innerHTML = '<div class="alert alert-danger">Failed to load users</div>';
+    }
+  }
+
+  addUserForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('newUsername').value;
+    const password = document.getElementById('newPassword').value;
+    
+    addUserStatus.textContent = 'Adding user...';
+    addUserStatus.className = 'text-info ms-3';
+    
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ username, password })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        addUserStatus.textContent = 'User added successfully!';
+        addUserStatus.className = 'text-success ms-3';
+        addUserForm.reset();
+        loadUsers();
+        setTimeout(() => { addUserStatus.textContent = ''; }, 3000);
+      } else {
+        addUserStatus.textContent = 'Error: ' + result.error;
+        addUserStatus.className = 'text-danger ms-3';
+      }
+    } catch (error) {
+      addUserStatus.textContent = 'Error: ' + error.message;
+      addUserStatus.className = 'text-danger ms-3';
+    }
+  });
+
+  window.openChangePassword = function(userId, username) {
+    document.getElementById('changePasswordUserId').value = userId;
+    document.getElementById('changePasswordUsername').value = username;
+    document.getElementById('changePasswordInput').value = '';
+    document.getElementById('changePasswordStatus').innerHTML = '';
+    changePasswordModal.show();
+  };
+
+  savePasswordBtn.addEventListener('click', async function() {
+    const userId = document.getElementById('changePasswordUserId').value;
+    const password = document.getElementById('changePasswordInput').value;
+    const statusDiv = document.getElementById('changePasswordStatus');
+    
+    if (!password || password.length < 6) {
+      statusDiv.innerHTML = '<div class="alert alert-danger">Password must be at least 6 characters</div>';
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/users/${userId}/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ password })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        statusDiv.innerHTML = '<div class="alert alert-success">Password changed successfully!</div>';
+        setTimeout(() => changePasswordModal.hide(), 1500);
+      } else {
+        statusDiv.innerHTML = `<div class="alert alert-danger">${result.error}</div>`;
+      }
+    } catch (error) {
+      statusDiv.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+    }
+  });
+
+  window.deleteUser = async function(userId, username) {
+    if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        credentials: 'same-origin'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        loadUsers();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  };
+
+  // Initialize tabs
+  document.getElementById('users-tab').addEventListener('shown.bs.tab', loadUsers);
+
+  // Initial load
+  loadContent();
+});
+</script>
+</body>
+</html>

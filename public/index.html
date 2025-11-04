@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bettara.com - Dynamic Showcase</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons for Navigation --><script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Configure Tailwind for Dark Mode and Custom Colors --><script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // NEW USER PALETTE MAPPING FOR LIGHT THEME
+                        'light-bg': '#eeeeee',      // Primary Background (Very Light Grey)
+                        'dark-text': '#222222',     // New main text color for contrast
+                        
+                        // New Primary Accent (Teal)
+                        'primary-accent': '#71a0a5', 
+                        
+                        // Supportive colors
+                        'hover-dark': '#333333',    // Used for button hover text
+                        'secondary-text': '#999999',// Subtle lines/placeholders
+                        
+                        // Venture Colors
+                        'venture-1': '#acc6aa',       // Light Sage Green (Present, pas presse)
+                        'venture-2': '#71a0a5',       // Desaturated Teal (Passerelles)
+                        'venture-3': '#77628c',       // Desaturated Purple (Facettes)
+                        'venture-4': '#77628c',       // Desaturated Purple (About Me)
+                        'venture-5': '#acc6aa',       // Light Sage Green (Contact)
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for EA-like aesthetic, performance, and scroll */
+        body {
+            scroll-snap-type: y mandatory;
+            overflow-x: hidden;
+            background-color: #eeeeee; /* Updated to new light background */
+            color: #222222; /* Updated default text color to dark */
+            transition: background-color 0.5s;
+        }
+        .snap-section {
+            height: 100vh;
+            scroll-snap-align: start;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+            padding-top: 5rem; /* Space for the fixed header */
+            padding-bottom: 4rem; 
+            padding-left: 1rem;
+            padding-right: 1rem;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .snap-section.active {
+            opacity: 1;
+        }
+        
+        /* Content Animation on Section Activation */
+        .content-container {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+            transition-delay: 0.2s; 
+            width: 100%; 
+            max-width: 1280px; 
+        }
+
+        .content-container img {
+            max-width: 100%;
+            height: 100%;
+        }
+
+        .snap-section.active .content-container {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .hero-text {
+            /* Fluid typography for bold, responsive headlines */
+            font-size: clamp(2.5rem, 10vw, 8rem); 
+            line-height: 1;
+            letter-spacing: -0.05em;
+            font-weight: 900;
+        }
+        
+        /* Ghost Button Style */
+        .link-button {
+            transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s, color 0.3s, border-color 0.3s;
+            transform: translateY(0);
+            /* Focus ring now white on dark elements, dark on light elements */
+            /* focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-light-bg focus:ring-primary-accent; */
+            outline: none;
+            box-shadow: 0 0 0 2px var(--tw-ring-color), 0 0 0 4px var(--tw-ring-offset-color);
+        }
+        .link-button:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 10px 20px -5px var(--hover-shadow-color);
+        }
+        
+        /* Canvas is static background */
+        .canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none; 
+        }
+
+        /* Fixed Navigation Header (Updated for Light Mode) */
+        .header-fixed {
+            backdrop-filter: blur(8px);
+            background-color: rgba(255, 255, 255, 0.7); /* Light transparent background */
+        }
+        
+        /* Mobile Menu Drawer Styling */
+        #mobile-menu {
+            transition: transform 0.3s ease-out;
+            transform: translateX(100%); /* Start off-screen */
+        }
+        #mobile-menu.open {
+            transform: translateX(0); /* Slide in */
+        }
+
+        /* Responsive adjustments for mobile */
+        @media (max-width: 640px) {
+            .hero-text {
+                font-size: clamp(2rem, 15vw, 4rem);
+            }
+            .link-button {
+                font-size: 0.875rem; 
+            }
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <!-- FIXED HEADER / NAVIGATION BAR (Updated for Light Theme) -->
+    <header class="fixed top-0 left-0 w-full z-50 header-fixed shadow-lg">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <div class="text-2xl font-black text-dark-text tracking-widest">
+                BETTARA
+            </div>
+            <!-- Desktop Menu -->
+            <div class="hidden md:flex space-x-6 items-center">
+                <!-- Navigation Links -->
+                <a href="#present" class="nav-link text-sm font-medium text-secondary-text hover:text-dark-text transition duration-200">Present</a>
+                <a href="#passerelles" class="nav-link text-sm font-medium text-secondary-text hover:text-dark-text transition duration-200">Passerelles</a>
+                <a href="#facettes" class="nav-link text-sm font-medium text-secondary-text hover:text-dark-text transition duration-200">Facettes</a>
+                <a href="#about" class="nav-link text-sm font-medium text-secondary-text hover:text-dark-text transition duration-200">About</a>
+                
+                <!-- CTA Button -->
+                <a href="#contact" class="nav-link text-sm font-bold bg-primary-accent px-4 py-1 rounded-full text-white hover:bg-hover-dark transition duration-200" data-content="contact.cta">Contact</a>
+                
+                <!-- Language Switcher (Initial state classes removed - JS controls styling) -->
+                <!-- Language Switcher -->
+                <div class="language-switcher flex space-x-2 ml-4">
+                    <button class="lang-btn text-sm font-bold px-3 py-1 rounded-full transition duration-200" data-lang="en">EN</button>
+                    <button class="lang-btn text-sm font-bold px-3 py-1 rounded-full transition duration-200" data-lang="fr">FR</button>
+                </div>
+            </div>
+            
+            <!-- Mobile Menu Toggler (Hamburger) -->
+            <button id="menu-toggler" class="md:hidden text-dark-text p-2" aria-label="Open Menu">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+        </nav>
+    </header>
+
+    <!-- MOBILE MENU DRAWER -->
+    <div id="mobile-menu" class="fixed top-0 right-0 h-full w-full max-w-xs bg-light-bg/95 backdrop-blur-lg z-[100] p-6 shadow-2xl flex flex-col items-start" role="dialog" aria-modal="true">
+        <!-- Close Button -->
+        <button id="menu-closer" class="self-end p-2 text-dark-text mb-8" aria-label="Close Menu">
+            <i data-lucide="x" class="w-8 h-8"></i>
+        </button>
+
+        <!-- Mobile Navigation Links -->
+        <nav class="flex flex-col space-y-4 w-full text-left">
+            <a href="#home" class="mobile-nav-link text-3xl font-bold text-dark-text hover:text-primary-accent transition duration-200 py-2">Home</a>
+            <a href="#present" class="mobile-nav-link text-3xl font-bold text-dark-text hover:text-primary-accent transition duration-200 py-2">Present</a>
+            <a href="#passerelles" class="mobile-nav-link text-3xl font-bold text-dark-text hover:text-primary-accent transition duration-200 py-2">Passerelles</a>
+            <a href="#facettes" class="mobile-nav-link text-3xl font-bold text-dark-text hover:text-primary-accent transition duration-200 py-2">Facettes</a>
+            <a href="#about" class="mobile-nav-link text-3xl font-bold text-dark-text hover:text-primary-accent transition duration-200 py-2">About</a>
+            <a href="#contact" class="mobile-nav-link text-3xl font-bold text-primary-accent py-2" data-content="contact.cta">Contact</a>
+        </nav>
+        
+        <!-- Mobile Language Switcher (Initial state classes removed - JS controls styling) -->
+        <!-- Mobile Language Switcher -->
+        <div class="mt-12 pt-4 border-t border-secondary-text/30 w-full flex space-x-4">
+            <button class="lang-btn text-lg font-bold px-4 py-2 rounded-full transition duration-200 flex-1" data-lang="en">English</button>
+            <button class="lang-btn text-lg font-bold px-4 py-2 rounded-full transition duration-200 flex-1" data-lang="fr">French</button>
+        </div>
+    </div>
+    <!-- END MOBILE MENU DRAWER -->
+
+
+    <!-- CANVAS CONTAINER --><div class="canvas-container">
+        <canvas id="morphCanvas" aria-hidden="true" role="presentation"></canvas>
+    </div>
+
+    <!-- MAIN CONTENT SECTIONS --><main class="relative z-10">
+
+        <!-- 1. INTRO / HOME SECTION -->
+        <section id="home" class="snap-section text-center active">
+            <div class="max-w-4xl mx-auto content-container">
+                <h1 class="hero-text text-dark-text leading-tight mb-4" data-content="home.title">
+                    BETTARA
+                    <br>
+                    
+                </h1>
+                <h2>
+                      <!-- The data-content="home.subtitle" attribute is used for dynamic content injection via JavaScript. -->
+                 <span class="text-4xl sm:text-6xl font-normal block mt-4 tracking-normal text-center text-secondary-text" data-content="home.subtitle">
+                        Connecting people
+                    </span>  
+
+                </h2>
+                
+                <p class="text-lg md:text-3xl text-dark-text mb-12 max-w-2xl mx-auto text-center" data-content="home.description">
+                    To self. To the other. To audiences.
+                </p>
+                <!-- CTA button updated for light theme -->
+                <a href="#present" class="link-button inline-flex items-center justify-center px-8 py-3 text-lg font-medium rounded-full 
+                    text-dark-text border-2 border-dark-text bg-transparent 
+                    hover:bg-hover-dark hover:text-white" 
+                    style="--hover-shadow-color: rgba(0, 0, 0, 0.2); 
+                           --tw-ring-color: #222222;" aria-label="Discover the Ventures, scroll down to the first venture."
+                           data-content="home.cta">
+                    Start Exploration
+                </a>
+            </div>
+        </section>
+
+        <!-- 2. PRESENT, PAS PRESSE (ASymmetrical Layout) -->
+        <section id="present" class="snap-section">
+            <div class="content-container grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                
+                <!-- Left Column: Text Content -->
+                <div class="lg:col-span-6 xl:col-span-5 text-center lg:text-left">
+                    
+                    <h2 class="text-5xl md:text-7xl font-extrabold leading-tight text-dark-text mb-6" data-content="present.title">
+                        Present, pas presse
+                    </h2>
+                    <p class="text-lg md:text-xl text-dark-text mb-10" data-content="present.description">
+                        The art of mindful, unhurried presence. This is where intention meets pace, allowing for true depth in every action, decision, and creative pursuit.
+                    </p>
+                    <a href="https://present.bettara.com" target="_blank" 
+                        class="link-button inline-flex items-center justify-center px-8 py-3 text-lg font-medium rounded-full 
+                               text-venture-1 border-2 border-venture-1 bg-light-bg 
+                               hover:bg-venture-1 hover:text-white" 
+                        style="--hover-shadow-color: rgba(172, 198, 170, 0.7); 
+                               --tw-ring-color: var(--venture-1);" data-content="present.cta">
+                        Deep Dive →
+                    </a>
+                </div>
+
+                <!-- Right Column: Visual Placeholder -->
+                <div class="lg:col-span-6 xl:col-span-7 h-80 lg:h-full flex items-center justify-center relative p-8">
+                    <!--<div class="w-full h-full bg-venture-1/10 border-4 border-venture-1 rounded-xl shadow-2xl flex flex-col items-center justify-center text-center p-6 transition duration-500 hover:scale-[1.01]">
+                        <p class="text-dark-text font-semibold text-2xl mb-2" data-content="present.placeholder">Visual Asset Placeholder</p>
+                        <p class="text-venture-1 text-sm">Large image, video loop, or abstract graphic goes here.</p>-->
+                        <img src="/img/present.png" alt="Present Icon" class="lg:col-span-6 xl:col-span-7 h-80 lg:h-full border-4 border-venture-1 rounded-xl ">
+                        <!--<div class="mt-4 w-16 h-16 rounded-full bg-venture-1/50 flex items-center justify-center">
+                            <i data-lucide="sun" class="w-8 h-8 text-dark-text"></i>
+                        </div>
+                    </div>-->
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. PASSERELLES (ASymmetrical Layout - Reversed) -->
+        <section id="passerelles" class="snap-section">
+            <div class="content-container grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                
+                <!-- Left Column: Visual Placeholder (Reverse on Desktop) -->
+                <div class="lg:col-span-6 xl:col-span-7 h-80 lg:h-full flex items-center justify-center relative p-8 order-2 lg:order-1">
+                    <!--<div class="w-full h-full bg-venture-2/10 border-4 border-venture-2 rounded-xl shadow-2xl flex flex-col items-center justify-center text-center p-6 transition duration-500 hover:scale-[1.01]">-->
+                        <!--<p class="text-dark-text font-semibold text-2xl mb-2" data-content="passerelles.placeholder">Strategic Bridge Visual</p>
+                        <p class="text-venture-2 text-sm">An abstract illustration of connection and synergy.</p>-->
+                        <img src="/img/passerelles.png" alt="Passerelles Icon" class="border-4 border-venture-2 rounded-xl ">
+                        <!--<div class="mt-4 w-16 h-16 rounded-full bg-venture-2/50 flex items-center justify-center">
+                            <i data-lucide="link" class="w-8 h-8 text-dark-text"></i>
+                        </div>-->
+                    <!--</div>-->
+                </div>
+
+                <!-- Right Column: Text Content -->
+                <div class="lg:col-span-6 xl:col-span-5 text-center lg:text-left order-1 lg:order-2">
+               
+                    <h2 class="text-5xl md:text-7xl font-extrabold leading-tight text-dark-text mb-6" data-content="passerelles.title">
+                        Passerelles
+                    </h2>
+                    <p class="text-lg md:text-xl text-dark-text mb-10" data-content="passerelles.description">
+                        Passerelles is dedicated to forging strategic connections between Arts and Sports. We operate across three core pillars: Awareness, Service & Product, and Brokage & Partnership.
+                    </p>
+                    <a href="https://passerelles.bettara.com" target="_blank" 
+                        class="link-button inline-flex items-center justify-center px-8 py-3 text-lg font-medium rounded-full 
+                               text-venture-2 border-2 border-venture-2 bg-light-bg 
+                               hover:bg-venture-2 hover:text-white" 
+                        style="--hover-shadow-color: rgba(113, 160, 165, 0.7);
+                               --tw-ring-color: var(--venture-2);" data-content="passerelles.cta">
+                        View Projects →
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. FACETTES (ASymmetrical Layout) -->
+        <section id="facettes" class="snap-section">
+            <div class="content-container grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                
+                <!-- Left Column: Text Content -->
+                <div class="lg:col-span-6 xl:col-span-5 text-center lg:text-left">
+                    
+                    <h2 class="text-5xl md:text-7xl font-extrabold leading-tight text-dark-text mb-6" data-content="facettes.title">
+                        Facettes
+                    </h2>
+                    <p class="text-lg md:text-xl text-dark-text mb-10" data-content="facettes.description">
+                        A celebration of the multi-faceted professional. This venture explores the diverse skills, talents, and personality traits that contribute to a holistic and successful career.
+                    </p>
+                    <a href="https://facettes.bettara.com" target="_blank" 
+                        class="link-button inline-flex items-center justify-center px-8 py-3 text-lg font-medium rounded-full 
+                               text-venture-3 border-2 border-venture-3 bg-light-bg 
+                               hover:bg-venture-3 hover:text-white" 
+                        style="--hover-shadow-color: rgba(119, 98, 140, 0.7);
+                               --tw-ring-color: var(--venture-3);" data-content="facettes.cta">
+                        Discover Facettes →
+                    </a>
+                </div>
+
+                <!-- Right Column: Visual Placeholder -->
+                <div class="lg:col-span-6 xl:col-span-7 h-80 lg:h-full flex items-center justify-center relative p-8">
+                    <!--<div class="w-full h-full bg-venture-3/10 border-4 border-venture-3 rounded-xl shadow-2xl flex flex-col items-center justify-center text-center p-6 transition duration-500 hover:scale-[1.01]">-->
+                        <!--<p class="text-dark-text font-semibold text-2xl mb-2" data-content="facettes.placeholder">Personality & Skills Map</p>
+                        <p class="text-venture-3 text-sm">Diagram or interactive graphic showcasing diverse attributes.</p>-->
+                        <img src="/img/facettes.png" alt="Facettes Icon" class="border-4 border-venture-3 rounded-xl ">
+                        <!--<div class="mt-4 w-16 h-16 rounded-full bg-venture-3/50 flex items-center justify-center">
+                            <i data-lucide="hexagon-stack" class="w-8 h-8 text-dark-text"></i>
+                        </div>-->
+                    <!--</div>-->
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. ABOUT ME SECTION (Centred, but contained) -->
+        <section id="about" class="snap-section text-center">
+            <div class="max-w-4xl mx-auto content-container">
+                
+                <h2 class="text-5xl md:text-7xl font-extrabold leading-tight text-dark-text mb-6" data-content="about.title">
+                    Vision & Mission
+                </h2>
+                <p class="text-lg md:text-xl text-dark-text mb-10 max-w-3xl mx-auto" data-content="about.description">
+                    Driven by a passion for synthesizing seemingly disparate fields, I believe the greatest insights and innovations happen at the intersection. My work is focused on creating intentional spaces (Present, pas presse) and strategic connections (Passerelles, Facettes) to unlock holistic potential.
+                </p>
+                <a href="#contact" class="scroll-link text-dark-text text-base font-bold underline hover:no-underline transition duration-300" aria-label="Scroll down to the Contact section." data-content="about.cta">
+                    Get in Touch ↓
+                </a>
+            </div>
+        </section>
+
+        <!-- 6. CONTACT SECTION -->
+        <section id="contact" class="snap-section">
+            <div class="max-w-lg mx-auto w-full rounded-xl bg-white/50 backdrop-blur-sm shadow-2xl content-container p-6 md:p-8">
+                <p class="text-xl md:text-2xl text-venture-5 mb-4 font-bold text-center uppercase tracking-widest" data-content="contact.venture_name">Collaborate</p>
+                <h2 class="text-center text-5xl md:text-6xl font-extrabold text-dark-text mb-8" data-content="contact.title">
+                    Contact Us
+                </h2>
+                <!-- Non-functional mock-up form -->
+                <form onsubmit="event.preventDefault(); document.getElementById('successMessage').classList.remove('hidden');" class="space-y-4">
+                    <div class="text-center">
+                        <label for="name" class="block text-sm font-medium text-dark-text mb-2" data-content="contact.name_label">Name</label>
+                        <input type="text" id="name" name="name" required 
+                            class="w-full p-4 rounded-lg bg-white/50 border border-secondary-text text-dark-text focus:ring-venture-5 focus:border-venture-5 transition duration-200" 
+                            data-content="contact.name_placeholder" placeholder="Your Name">
+                    </div>
+                    <div class="text-center">
+                        <label for="email" class="block text-sm font-medium text-dark-text mb-2" data-content="contact.email_label">Email</label>
+                        <input type="email" id="email" name="email" required 
+                            class="w-full p-4 rounded-lg bg-white/50 border border-secondary-text text-dark-text focus:ring-venture-5 focus:border-venture-5 transition duration-200" 
+                            data-content="contact.email_placeholder" placeholder="you@example.com">
+                    </div>
+                    <div class="text-center">
+                        <label for="message" class="block text-sm font-medium text-dark-text mb-2" data-content="contact.message_label">Message</label>
+                        <textarea id="message" name="message" rows="3" required 
+                            class="w-full p-4 rounded-lg bg-white/50 border border-secondary-text text-dark-text focus:ring-venture-5 focus:border-venture-5 transition duration-200" 
+                            data-content="contact.message_placeholder" placeholder="Tell me about your idea..."></textarea>
+                    </div>
+                    
+                    <button type="submit" aria-label="Send Message"
+                        class="link-button w-full inline-flex items-center justify-center px-8 py-3 text-lg font-medium rounded-full 
+                           text-venture-5 border-2 border-venture-5 bg-light-bg 
+                           hover:bg-venture-5 hover:text-white" 
+                        style="--hover-shadow-color: rgba(172, 198, 170, 0.7);
+                               --tw-ring-color: var(--venture-5);" data-content="contact.cta">
+                        Send Message
+                    </button>
+                </form>
+
+                <!-- Mock Success Message -->
+                <div id="successMessage" role="alert" class="hidden mt-6 p-4 bg-green-200 border border-green-400 text-green-800 rounded-lg text-center" data-content="contact.success_message">
+                    Message sent successfully! I'll be in touch soon.
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JAVASCRIPT FOR MORPHING ANIMATION AND DYNAMIC CONTENT -->
+    <script>
+        let currentLang = 'en'; // Will be updated on initial load
+        
+        // --- Dynamic Content & Language Logic (FIXED) ---
+        
+        /**
+         * Fetches content from the server and injects it into the DOM based on data-content attributes.
+         */
+        async function fetchAndRenderContent() {
+            try {
+                // Fetch content from the server (which includes the current language preference based on cookie)
+                const response = await fetch('/api/content');
+                const content = await response.json();
+
+                // 1. Render all text content
+                document.querySelectorAll('[data-content]').forEach(element => {
+                    const [sectionKey, contentKey] = element.getAttribute('data-content').split('.');
+                    // Use optional chaining for safe access, falling back to a debug message
+                    const text = content[sectionKey]?.[contentKey] || `[MISSING: ${sectionKey}.${contentKey}]`;
+                    
+                    if (element.hasAttribute('placeholder')) {
+                        // Apply to placeholder attribute for inputs/textareas
+                        element.placeholder = text;
+                    } else {
+                        // Apply to innerText/innerHTML for standard elements
+                        //element.innerText = text;
+
+                        // NEW (for rich text - update this line):
+                        element.innerHTML = text;
+                    }
+                });
+                
+                // 2. Update language buttons state (THE ROBUST FIX)
+                updateLanguageButtons();
+
+            } catch (error) {
+                console.error("Error fetching or rendering content. Ensure the server is running with content.json:", error);
+            }
+        }
+
+        /**
+         * Updates the language cookie on the server and reloads content.
+         * @param {string} lang - The new language ('en' or 'fr').
+         */
+        async function setLanguage(lang) {
+            try {
+                // This route sets the 'lang' cookie on the server
+                const response = await fetch('/set-lang', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ lang })
+                });
+
+                if (response.ok) {
+                    currentLang = lang;
+                    // Read the new language from the cookie and update UI/content
+                    await fetchAndRenderContent(); 
+                    closeMenu(); 
+                } else {
+                    console.error("Failed to set language on server. Status:", response.status);
+                }
+            } catch (error) {
+                console.error("Network error setting language:", error);
+            }
+        }
+        
+        /**
+         * Reads the current language from the cookie and applies the active styles.
+         */
+        
+        
+        
+
+        /**
+ * Reads the current language from the cookie and applies the active styles.
+ * COMPLETE FIX - ensures only the current language button is styled as active.
+ */
+function updateLanguageButtons() {
+    // Parse cookies properly
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const parts = cookie.split('=');
+        if (parts.length === 2) {
+            const key = parts[0].trim();
+            const value = parts[1].trim();
+            acc[key] = value;
+        }
+        return acc;
+    }, {});
+    
+    const detectedLang = cookies.lang || 'en';
+    currentLang = detectedLang;
+    
+    console.log('Current language:', detectedLang);
+    console.log('Cookies:', cookies);
+
+    // Update ALL language buttons (both desktop and mobile)
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        const btnLang = btn.getAttribute('data-lang');
+        const isActive = btnLang === detectedLang;
+        
+        console.log(`Button [${btnLang}]: ${isActive ? 'ACTIVE' : 'inactive'}`);
+        
+        // Remove all possible state classes first
+        btn.classList.remove(
+            'bg-primary-accent', 'text-white', 'border-primary-accent',
+            'bg-transparent', 'text-dark-text', 'border-dark-text',
+            'border'
+        );
+
+        // Apply classes based on active state
+        if (isActive) {
+            // Active: filled background, white text, colored border
+            btn.classList.add('bg-primary-accent', 'text-white', 'border', 'border-primary-accent');
+        } else {
+            // Inactive: transparent background, dark text, dark border
+            btn.classList.add('bg-transparent', 'text-dark-text', 'border', 'border-dark-text');
+        }
+    });
+}
+
+        
+       /* function updateLanguageButtons() {
+            const cookies = document.cookie.split(';').reduce((acc, current) => {
+            const [key, value] = current.split('=');
+            acc[key.trim()] = value;
+                return acc;
+            }, {});
+            const detectedLang = cookies.lang || 'en';
+            const ACTIVECLASSES = ['bg-primary-accent', 'text-white', 'border', 'border-primary-accent'];
+            const INACTIVECLASSES = ['bg-transparent', 'text-dark-text', 'border', 'border-dark-text'];
+            const ALLSTATECLASSES = [...ACTIVECLASSES, ...INACTIVECLASSES];
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove(...ALLSTATECLASSES);
+                if (btn.getAttribute('data-lang') === detectedLang) {
+                btn.classList.add(...ACTIVECLASSES);
+                } else {
+                btn.classList.add(...INACTIVECLASSES);
+                }
+            });
+            }*/
+
+
+
+         /*function updateLanguageButtons() {
+            // Robust cookie reading
+            const cookies = document.cookie.split('; ').reduce((acc, current) => {
+                const [key, value] = current.split('=');
+                acc[key.trim()] = value;
+                return acc;
+            }, {});
+            
+            const detectedLang = cookies.lang || 'en';
+            currentLang = detectedLang;
+
+            // --- CRITICAL FIX: Ensure consistent border presence and correct styling ---
+            // Active Button: Filled, Border matches fill color
+            const ACTIVE_CLASSES = ['bg-primary-accent', 'text-white', 'border', 'border-primary-accent']; 
+            
+            // Inactive Button: Ghost, Border matches text color
+            const INACTIVE_CLASSES = ['bg-transparent', 'text-dark-text', 'border', 'border-dark-text'];
+            
+            // Comprehensive list of all state classes to remove for a clean slate
+            const ALL_STATE_CLASSES = [
+                'bg-primary-accent', 'text-white', 'border-primary-accent', 
+                'bg-transparent', 'text-dark-text', 'border', 'border-dark-text' 
+            ];
+            // --------------------------------------------------------------------------
+
+            // Iterate over all language buttons (desktop and mobile)
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                const isCurrentLang = btn.getAttribute('data-lang') === detectedLang;
+                
+                // 1. Remove ALL state classes to ensure a clean slate
+                btn.classList.remove(...ALL_STATE_CLASSES);
+
+                if (isCurrentLang) {
+                    // 2. Apply active state
+                    btn.classList.add(...ACTIVE_CLASSES);
+                } else {
+                    // 3. Apply inactive state (Ghost Button)
+                    btn.classList.add(...INACTIVE_CLASSES);
+                }
+            });
+        }*/
+        
+        // --- Mobile Menu Logic ---
+        const menuToggler = document.getElementById('menu-toggler');
+        const menuCloser = document.getElementById('menu-closer');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+        const body = document.body;
+
+        function openMenu() {
+            mobileMenu.classList.add('open');
+            body.style.overflowY = 'hidden'; // Prevent scrolling the main body
+        }
+
+        function closeMenu() {
+            mobileMenu.classList.remove('open');
+            body.style.overflowY = 'auto'; // Re-enable scrolling
+        }
+
+        // Event listeners for menu toggle and close button
+        menuToggler.addEventListener('click', openMenu);
+        menuCloser.addEventListener('click', closeMenu);
+
+        // Event listeners for mobile links to close the menu upon navigation
+        mobileNavLinks.forEach(link => {
+            link.addEventListener('click', closeMenu);
+        });
+
+        // Event listeners for ALL language buttons (desktop and mobile)
+        document.querySelectorAll('.lang-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const lang = button.getAttribute('data-lang');
+                setLanguage(lang);
+            });
+        });
+
+        // --- Original Canvas/Morphing Code Below ---
+
+        // Initialize Lucide Icons and content after DOM is ready
+        window.onload = function() {
+            lucide.createIcons();
+            // Start content load, which now calls the highly robust updateLanguageButtons()
+            fetchAndRenderContent(); 
+            initCanvas(); 
+        };
+
+        // --- Configuration ---
+        const VENTURES = [
+            'home', 
+            'present',
+            'passerelles',
+            'facettes',
+            'about',    
+            'contact'   
+        ];
+        // Updated colors to match the new light theme palette
+        const SECTION_COLORS = {
+            'home': '#eeeeee',      
+            'present': '#acc6aa',   
+            'passerelles': '#71a0a5', 
+            'facettes': '#77628c',  
+            'about': '#77628c',     
+            'contact': '#acc6aa'    
+        };
+        const NUM_VERTICES = 16;
+        const MOUSE_INFLUENCE_FACTOR = 0.03; 
+        let mouseX, mouseY; 
+        let animationEnabled = true; 
+
+        // --- Canvas Setup ---
+        const canvas = document.getElementById('morphCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, centerX, centerY;
+        let rafId;
+
+        function resizeCanvas() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            centerX = width / 2;
+            centerY = height / 2;
+
+            if (mouseX === undefined || mouseY === undefined) {
+                mouseX = centerX;
+                mouseY = centerY;
+            }
+        }
+        
+        function handleMouseMove(event) {
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        // --- Shape Generation Functions ---
+        function generateShape(sides, radius, distortionFactor = 0, phase = 0) {
+            const shape = [];
+            for (let i = 0; i < NUM_VERTICES; i++) {
+                let angle = (i / NUM_VERTICES) * 2 * Math.PI;
+                let r = radius + Math.sin(angle * (sides / 2) + phase) * distortionFactor * radius;
+
+                shape.push({
+                    x: Math.cos(angle) * r,
+                    y: Math.sin(angle) * r,
+                    offset: Math.random() * 0.05 + 0.95 
+                });
+            }
+            return shape;
+        }
+        
+        let shapeStates = {};
+        function generateShapeStates() {
+            const radius = Math.min(width, height) * 0.45; 
+            shapeStates = {
+                home: generateShape(8, radius, 0.15, 0),
+                present: generateShape(6, radius * 1.05, 0.05, Math.PI / 4), 
+                passerelles: generateShape(8, radius * 0.95, 0.25, Math.PI / 8),
+                facettes: generateShape(4, radius * 1.1, 0.1, 0),
+                about: generateShape(5, radius * 1.05, 0.08, 0),
+                contact: generateShape(12, radius * 1.15, 0.02, 0)
+            };
+        }
+
+        // --- Interpolation (Lerp) Functions (Used for smooth morphing)---
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+        
+        function smoothStep(t) {
+            return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        }
+
+        function interpolateShape(shapeStart, shapeEnd, t) {
+            const newShape = [];
+            const smoothT = smoothStep(t);
+            for (let i = 0; i < NUM_VERTICES; i++) {
+                newShape.push({
+                    x: lerp(shapeStart[i].x, shapeEnd[i].x, smoothT),
+                    y: lerp(shapeStart[i].y, shapeEnd[i].y, smoothT),
+                    offset: shapeStart[i].offset 
+                });
+            }
+            return newShape;
+        }
+        
+        function interpolateColor(color1, color2, t) {
+            function hexToRgb(hex) {
+                if (hex.length === 4) {
+                    hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+                }
+                const bigint = parseInt(hex.slice(1), 16);
+                return [ (bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255 ];
+            }
+            function rgbToHex(r, g, b) {
+                return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            }
+
+            const c1 = hexToRgb(color1);
+            const c2 = hexToRgb(color2);
+            
+            const smoothT = smoothStep(t);
+
+            const r = Math.round(lerp(c1[0], c2[0], smoothT));
+            const g = Math.round(lerp(c1[1], c2[1], smoothT));
+            const b = Math.round(lerp(c1[2], c2[2], smoothT));
+            
+            return rgbToHex(r, g, b);
+        }
+
+        // --- Main Drawing Function ---
+        function drawShape(shape, color, x, y) {
+            ctx.clearRect(0, 0, width, height); // Clear frame at start of drawing
+            ctx.save();
+            ctx.translate(x, y); 
+
+            ctx.beginPath();
+            
+            ctx.shadowBlur = 40;
+            ctx.shadowColor = color; 
+            
+            const time = animationEnabled ? performance.now() * 0.00005 : 0; 
+            ctx.rotate(time); 
+
+            ctx.moveTo(shape[0].x * shape[0].offset, shape[0].y * shape[0].offset);
+
+            for (let i = 1; i < shape.length; i++) {
+                const p2 = shape[i];
+                const cp1 = shape[i - 1];
+                const cp2 = shape[(i + 1) % shape.length];
+                const x_mid = (cp1.x * cp1.offset + p2.x * p2.offset) / 2;
+                const y_mid = (cp1.y * cp1.offset + p2.y * p2.offset) / 2;
+                
+                ctx.quadraticCurveTo(
+                    cp1.x * cp1.offset, cp1.y * cp1.offset, 
+                    x_mid, y_mid
+                );
+            }
+            ctx.closePath();
+
+            // Opacity is slightly reduced for the light mode shape
+            ctx.fillStyle = color + 'D0'; // 80% opacity
+            ctx.fill();
+            
+            ctx.strokeStyle = '#222222'; // Dark border for definition
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function animate(timestamp) {
+            // Note: ctx.clearRect is now inside drawShape()
+            
+            const scrollY = window.scrollY;
+            const vh = window.innerHeight;
+            const sections = document.querySelectorAll('.snap-section');
+            const totalSections = sections.length;
+
+            let startShape, endShape, startColor, endColor;
+            let currentT; 
+
+            const transitionIndex = Math.floor(scrollY / vh);
+
+            sections.forEach((section, index) => {
+                const sectionStart = index * vh;
+                const sectionEnd = (index + 1) * vh;
+                if (scrollY >= sectionStart - vh/3 && scrollY < sectionEnd - vh/3) {
+                    section.classList.add('active');
+                } else {
+                    section.classList.remove('active');
+                }
+            });
+
+
+            if (transitionIndex >= 0 && transitionIndex < totalSections - 1) {
+                const startId = VENTURES[transitionIndex];
+                const endId = VENTURES[transitionIndex + 1];
+                
+                const scrollStart = transitionIndex * vh;
+                currentT = (scrollY - scrollStart) / vh;
+                currentT = Math.max(0, Math.min(1, currentT)); 
+
+                startShape = shapeStates[startId];
+                endShape = shapeStates[endId];
+                startColor = SECTION_COLORS[startId];
+                endColor = SECTION_COLORS[endId];
+
+            } else if (transitionIndex >= totalSections - 1) {
+                const lastId = VENTURES[totalSections - 1];
+                currentShape = shapeStates[lastId];
+                startColor = SECTION_COLORS[lastId];
+                endColor = SECTION_COLORS[lastId]; 
+                currentT = 1;
+
+            } else { 
+                const firstId = VENTURES[0];
+                currentShape = shapeStates[firstId];
+                startColor = SECTION_COLORS[firstId];
+                endColor = SECTION_COLORS[firstId]; 
+                currentT = 0;
+            }
+
+            if (startShape && endShape) {
+                currentShape = interpolateShape(startShape, endShape, currentT);
+            }
+            
+            const interpolatedColor = interpolateColor(startColor, endColor, currentT);
+            
+            // Calculate center shift based on mouse position (Parallax effect)
+            const influenceX = (mouseX - centerX) * MOUSE_INFLUENCE_FACTOR;
+            const influenceY = (mouseY - centerY) * MOUSE_INFLUENCE_FACTOR;
+
+            drawShape(currentShape, interpolatedColor, centerX + influenceX, centerY + influenceY);
+
+            if (animationEnabled) {
+                rafId = requestAnimationFrame(animate);
+            }
+        }
+
+        // --- Initialization and Event Listeners ---
+        function initCanvas() {
+            resizeCanvas();
+            generateShapeStates();
+
+            if (window.matchMedia) {
+                const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+                animationEnabled = !mediaQuery.matches;
+                
+                mediaQuery.addEventListener('change', (e) => {
+                    animationEnabled = !e.matches;
+                    if (animationEnabled) {
+                        animate(); 
+                    } else if (rafId) {
+                        cancelAnimationFrame(rafId); 
+                    }
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                generateShapeStates();
+            });
+            
+            window.addEventListener('mousemove', handleMouseMove);
+
+            if (animationEnabled) {
+                animate(); 
+            } else {
+                drawShape(shapeStates['home'], SECTION_COLORS['home'], centerX, centerY);
+            }
+        }
+    </script>
+
+</body>
+</html>
