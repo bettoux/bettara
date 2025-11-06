@@ -329,7 +329,15 @@ document.addEventListener("DOMContentLoaded", function() {
     addDebugInfo(`Loading content for section: ${section}, lang: ${lang}`);
     
     try {
-      const response = await fetch(`/api/content?section=${section}&lang=${lang}`);
+      // Add cache-busting parameter to force fresh load
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/content?section=${section}&lang=${lang}&_=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       
       if (response.status === 401) {
         addDebugInfo('Authentication failed - redirecting to login');
@@ -535,9 +543,17 @@ document.addEventListener("DOMContentLoaded", function() {
         saveStatus.textContent = "✓ Saved successfully!";
         saveStatus.className = 'text-success ms-3 fw-bold';
         addDebugInfo(`Save successful: ${JSON.stringify(result)}`);
+        
+        // Wait a bit longer before reloading to ensure file is written
+        setTimeout(() => {
+          saveStatus.textContent = "Reloading content...";
+          addDebugInfo('Reloading content from server...');
+          loadContent();
+        }, 500);
+        
         setTimeout(() => {
           saveStatus.textContent = "";
-        }, 2000);
+        }, 3000);
       } else {
         saveStatus.textContent = "✗ Save failed: " + (result.error || 'Unknown error');
         saveStatus.className = 'text-danger ms-3 fw-bold';
