@@ -38,7 +38,7 @@ app.use(bodyParser.json());
 app.use(session({
   secret: 'supersecuresecretkey',
   resave: false,
-  saveUninitialized: false, // Changed from true to false
+  saveUninitialized: false,
   cookie: { 
     secure: false,
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
@@ -46,9 +46,8 @@ app.use(session({
 }));
 
 // Serve static files AFTER session middleware, but BEFORE auth routes
-// This allows static files to be served, but protected routes will be checked first
 app.use(express.static(path.join(__dirname, 'public'), {
-  index: false // Don't automatically serve index files
+  index: false
 }));
 
 // --- AUTHENTICATION AND AUTHORIZATION ---
@@ -60,7 +59,6 @@ const requireAuth = (req, res, next) => {
     next();
   } else {
     console.log('Auth failed - no session or user');
-    // For API calls, return JSON error instead of redirect
     if (req.path.startsWith('/api/')) {
       return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
@@ -86,20 +84,20 @@ const initContentFile = () => {
         console.log("Content file not found. Creating default content structure.");
         const defaultContent = {
             en: {
-                home: { title: "", subtitle: "", description: "" },
-                present: { title: "", subtitle: "", description: "" },
-                passerelles: { title: "", subtitle: "", description: "" },
-                facettes: { title: "", subtitle: "", description: "" },
-                about: { title: "", subtitle: "", description: "" },
-                contact: { title: "", subtitle: "", description: "" }
+                home: { title: "", subtitle: "", description: "", cta: "" },
+                present: { title: "", subtitle: "", description: "", cta: "" },
+                passerelles: { title: "", subtitle: "", description: "", cta: "" },
+                facettes: { title: "", subtitle: "", description: "", cta: "" },
+                about: { title: "", subtitle: "", description: "", cta: "" },
+                contact: { title: "", subtitle: "", description: "", cta: "" }
             },
             fr: {
-                home: { title: "", subtitle: "", description: "" },
-                present: { title: "", subtitle: "", description: "" },
-                passerelles: { title: "", subtitle: "", description: "" },
-                facettes: { title: "", subtitle: "", description: "" },
-                about: { title: "", subtitle: "", description: "" },
-                contact: { title: "", subtitle: "", description: "" }
+                home: { title: "", subtitle: "", description: "", cta: "" },
+                present: { title: "", subtitle: "", description: "", cta: "" },
+                passerelles: { title: "", subtitle: "", description: "", cta: "" },
+                facettes: { title: "", subtitle: "", description: "", cta: "" },
+                about: { title: "", subtitle: "", description: "", cta: "" },
+                contact: { title: "", subtitle: "", description: "", cta: "" }
             }
         };
         fs.writeJsonSync(contentFilePath, defaultContent, { spaces: 2 });
@@ -109,7 +107,7 @@ const initContentFile = () => {
 initUsersFile();
 initContentFile();
 
-// Login routes (must come BEFORE admin route)
+// Login routes
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -126,7 +124,6 @@ app.post('/login', async (req, res) => {
       req.session.user = { username: user.username, id: user.id };
       console.log('Login successful, session:', req.session);
       
-      // Save session before redirecting
       req.session.save((err) => {
         if (err) {
           console.error('Session save error:', err);
@@ -170,6 +167,7 @@ app.get('/', (req, res) => {
 
 app.post('/set-lang', (req, res) => {
     const { lang } = req.body;
+    console.log('Setting language to:', lang);
     if (['en', 'fr'].includes(lang)) {
         res.cookie('lang', lang, { maxAge: 3600000 * 24 * 30, httpOnly: true });
         return res.json({ success: true, lang });
@@ -185,21 +183,27 @@ app.get('/api/content', (req, res) => {
   
   try {
     const contentFilePath = path.join(config.dataPath, config.contentFile);
+    console.log('Reading content from:', contentFilePath);
+    
     const content = fs.readJsonSync(contentFilePath);
+    console.log('Content file read successfully');
     
     // If section and lang are specified, return specific section content (for admin)
     if (section && lang) {
+      console.log(`Admin requesting: section=${section}, lang=${lang}`);
       if (!content[lang]) {
         content[lang] = {};
       }
       if (!content[lang][section]) {
         content[lang][section] = { title: "", subtitle: "", description: "" };
       }
+      console.log('Returning section content:', content[lang][section]);
       return res.json(content[lang][section]);
     }
     
     // Otherwise, return all content for the current language (for frontend)
     const currentLang = req.cookies.lang || 'en';
+    console.log('Frontend requesting, language:', currentLang);
     res.json(content[currentLang] || content.en);
   } catch (error) {
     console.error('Error reading content:', error);
@@ -207,49 +211,84 @@ app.get('/api/content', (req, res) => {
   }
 });
 
-// Save content (Admin only)
+// Save content (Admin only) - ENHANCED WITH BETTER DEBUGGING
 app.post('/api/content', requireAuth, upload.single('image'), (req, res) => {
   try {
     const { section, lang } = req.body;
     const contentFilePath = path.join(config.dataPath, config.contentFile);
     
-    console.log('=== SAVE REQUEST ===');
+    console.log('========== SAVE CONTENT REQUEST ==========');
+    console.log('Authenticated user:', req.session.user);
     console.log('Section:', section);
     console.log('Language:', lang);
-    console.log('Body:', req.body);
+    console.log('Body fields:', Object.keys(req.body));
+    console.log('Full body:', req.body);
+    console.log('Content file path:', contentFilePath);
     
+    // Check if file exists
+    if (!fs.existsSync(contentFilePath)) {
+      console.error('ERROR: Content file does not exist!');
+      return res.status(500).json({ success: false, error: 'Content file not found' });
+    }
+    
+    // Read current content
+    console.log('Reading content file...');
     const content = fs.readJsonSync(contentFilePath);
+    console.log('Content file read successfully');
+    console.log('Current content structure:', Object.keys(content));
 
     // Ensure language and section structure exists
     if (!content[lang]) {
+      console.log(`Creating language structure for: ${lang}`);
       content[lang] = {};
     }
     if (!content[lang][section]) {
+      console.log(`Creating section structure for: ${lang}.${section}`);
       content[lang][section] = {};
     }
 
+    console.log('Before update:', JSON.stringify(content[lang][section], null, 2));
+
     // Update all fields from the request body (except system fields)
+    let updatedFields = [];
     for (const key in req.body) {
       if (!['section', 'lang'].includes(key)) {
         content[lang][section][key] = req.body[key];
-        console.log(`Set ${key}:`, req.body[key]);
+        updatedFields.push(key);
+        console.log(`✓ Updated ${key}:`, req.body[key].substring(0, 100) + (req.body[key].length > 100 ? '...' : ''));
       }
     }
 
     // Handle image upload if present
     if (req.file) {
       content[lang][section].imageUrl = `/uploads/${req.file.filename}`;
-      console.log('Image uploaded:', req.file.filename);
+      updatedFields.push('imageUrl');
+      console.log('✓ Image uploaded:', req.file.filename);
     }
 
+    console.log('After update:', JSON.stringify(content[lang][section], null, 2));
+    console.log('Updated fields:', updatedFields);
+
     // Write updated content back to file
-    fs.writeJsonSync(contentFilePath, content, { spaces: 2 });
-    console.log('Content written to file successfully');
-    console.log('Updated section:', JSON.stringify(content[lang][section], null, 2));
-    
-    res.json({ success: true, content: content[lang][section] });
+    console.log('Writing to file...');
+    try {
+      fs.writeJsonSync(contentFilePath, content, { spaces: 2 });
+      console.log('✓ Content written to file successfully!');
+      
+      // Verify the write
+      const verifyContent = fs.readJsonSync(contentFilePath);
+      console.log('Verification - file content after write:', JSON.stringify(verifyContent[lang][section], null, 2));
+      
+      console.log('========== SAVE SUCCESSFUL ==========');
+      res.json({ success: true, content: content[lang][section], updatedFields });
+    } catch (writeError) {
+      console.error('ERROR writing to file:', writeError);
+      return res.status(500).json({ success: false, error: 'Failed to write to file: ' + writeError.message });
+    }
   } catch (error) {
+    console.error('========== SAVE FAILED ==========');
     console.error('Error saving content:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -261,7 +300,6 @@ app.get('/api/users', requireAuth, (req, res) => {
   try {
     const usersFilePath = path.join(config.dataPath, config.usersFile);
     const users = fs.readJsonSync(usersFilePath);
-    // Don't send passwords to frontend
     const safeUsers = users.map(u => ({ id: u.id, username: u.username }));
     res.json({ success: true, users: safeUsers });
   } catch (error) {
@@ -286,12 +324,10 @@ app.post('/api/users', requireAuth, async (req, res) => {
     const usersFilePath = path.join(config.dataPath, config.usersFile);
     const users = fs.readJsonSync(usersFilePath);
     
-    // Check if username already exists
     if (users.find(u => u.username === username)) {
       return res.status(400).json({ success: false, error: 'Username already exists' });
     }
     
-    // Create new user
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = {
       id: uuidv4(),
@@ -317,12 +353,10 @@ app.delete('/api/users/:id', requireAuth, (req, res) => {
     const usersFilePath = path.join(config.dataPath, config.usersFile);
     const users = fs.readJsonSync(usersFilePath);
     
-    // Don't allow deleting yourself
     if (req.session.user.id === id) {
       return res.status(400).json({ success: false, error: 'Cannot delete your own account' });
     }
     
-    // Don't allow deleting if it's the last user
     if (users.length === 1) {
       return res.status(400).json({ success: false, error: 'Cannot delete the last user' });
     }
@@ -375,4 +409,6 @@ app.put('/api/users/:id/password', requireAuth, async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   console.log(`Admin login - username: bettara, password: bettara123`);
+  console.log(`Data directory: ${config.dataPath}`);
+  console.log(`Content file: ${path.join(config.dataPath, config.contentFile)}`);
 });
