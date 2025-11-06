@@ -6,6 +6,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcrypt';
+import { MongoClient } from 'mongodb';
 const { v4: uuidv4 } = await import('uuid'); 
 
 import { fileURLToPath } from 'url';
@@ -14,98 +15,115 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const dataPath = path.join(__dirname, 'data');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const upload = multer({ dest: 'public/uploads/' });
 
-// Configuration
-const config = {
-  dataPath: path.join(__dirname, 'data'),
-  contentFile: 'content.json',
-  usersFile: 'users.json'
-};
+// MongoDB Configuration
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://your-connection-string-here';
+const DB_NAME = 'bettara';
 
-// Ensure data directory exists
-fs.ensureDirSync(config.dataPath);
+let db;
+let contentCollection;
+let usersCollection;
+
+// Connect to MongoDB
+async function connectToDatabase() {
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    console.log('✓ Connected to MongoDB');
+    
+    db = client.db(DB_NAME);
+    contentCollection = db.collection('content');
+    usersCollection = db.collection('users');
+    
+    // Initialize default data if needed
+    await initializeDatabase();
+    
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    process.exit(1);
+  }
+}
+
+// Initialize database with default data
+async function initializeDatabase() {
+  // Check if content exists
+  const contentCount = await contentCollection.countDocuments();
+  if (contentCount === 0) {
+    console.log('Initializing content collection...');
+    const defaultContent = {
+      _id: 'content',
+      en: {
+        home: { title: "BETTARA", subtitle: "Connecting people", description: "To self. To the other. To audiences.", cta: "Start Exploration" },
+        present: { title: "Present, pas presse", description: "The art of mindful, unhurried presence.", cta: "Deep Dive →", placeholder: "Visual Asset Placeholder" },
+        passerelles: { venture_name: "Venture 2", title: "Passerelles", description: "Passerelles is dedicated to forging strategic connections.", cta: "View Projects →", placeholder: "Strategic Bridge Visual" },
+        facettes: { title: "Facettes", description: "A celebration of the multi-faceted professional.", cta: "Discover Facettes →", placeholder: "Personality & Skills Map" },
+        about: { title: "Vision & Mission", description: "Driven by a passion for synthesizing seemingly disparate fields.", cta: "Get in Touch ↓" },
+        contact: { venture_name: "Collaborate", title: "Contact Us", name_label: "Name", name_placeholder: "Your Name", email_label: "Email", email_placeholder: "you@example.com", message_label: "Message", message_placeholder: "Tell me about your idea...", cta: "Send Message", success_message: "Message sent successfully! I'll be in touch soon." }
+      },
+      fr: {
+        home: { title: "BETTARA", subtitle: "Connecter les gens", description: "À soi. À l'autre. Aux publics.", cta: "Commencer l'exploration" },
+        present: { title: "Présent, pas pressé", description: "L'art de la présence consciente et sans hâte.", cta: "Plongée profonde →", placeholder: "Espace réservé pour l'actif visuel" },
+        passerelles: { venture_name: "Entreprise 2", title: "Passerelles", description: "Passerelles se consacre à forger des connexions stratégiques.", cta: "Voir les projets →", placeholder: "Visuel de pont stratégique" },
+        facettes: { title: "Facettes", description: "Une célébration du professionnel aux multiples facettes.", cta: "Découvrir les facettes →", placeholder: "Carte de personnalité et compétences" },
+        about: { title: "Vision et mission", description: "Animé par une passion pour la synthèse de domaines apparemment disparates.", cta: "Entrer en contact ↓" },
+        contact: { venture_name: "Collaborer", title: "Nous contacter", name_label: "Nom", name_placeholder: "Votre nom", email_label: "Courriel", email_placeholder: "vous@exemple.com", message_label: "Message", message_placeholder: "Parlez-moi de votre idée...", cta: "Envoyer le message", success_message: "Message envoyé avec succès ! Je vous contacterai bientôt." }
+      }
+    };
+    await contentCollection.insertOne(defaultContent);
+    console.log('✓ Default content created');
+  }
+  
+  // Check if users exist
+  const userCount = await usersCollection.countDocuments();
+  if (userCount === 0) {
+    console.log('Initializing users collection...');
+    const hashedPassword = await bcrypt.hash('bettara123', 10);
+    const defaultUser = {
+      id: uuidv4(),
+      username: 'bettara',
+      password: hashedPassword
+    };
+    await usersCollection.insertOne(defaultUser);
+    console.log('✓ Default admin user created');
+  }
+}
+
+// Ensure uploads directory exists
 fs.ensureDirSync(path.join(__dirname, 'public', 'uploads'));
 
-// Middleware setup (ORDER MATTERS!)
+// Middleware setup
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(session({
-  secret: 'supersecuresecretkey',
+  secret: process.env.SESSION_SECRET || 'supersecuresecretkey',
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: false,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
 
-// Serve static files AFTER session middleware, but BEFORE auth routes
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public'), {
   index: false
 }));
 
-// --- AUTHENTICATION AND AUTHORIZATION ---
+// --- AUTHENTICATION ---
 const requireAuth = (req, res, next) => {
-  console.log('Auth check - Session:', req.session);
-  console.log('Auth check - User:', req.session?.user);
-  
   if (req.session && req.session.user) {
     next();
   } else {
-    console.log('Auth failed - no session or user');
     if (req.path.startsWith('/api/')) {
       return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
     res.redirect('/login');
   }
 };
-
-// Ensure initial users file exists
-const initUsersFile = () => {
-    const usersFilePath = path.join(config.dataPath, config.usersFile);
-    if (!fs.existsSync(usersFilePath)) {
-        console.log("Users file not found. Creating default admin user.");
-        const hashedPassword = bcrypt.hashSync('bettara123', 10);
-        const defaultUsers = [{ username: 'bettara', password: hashedPassword, id: uuidv4() }];
-        fs.writeJsonSync(usersFilePath, defaultUsers, { spaces: 2 });
-    }
-};
-
-// Ensure initial content file exists with proper structure
-const initContentFile = () => {
-    const contentFilePath = path.join(config.dataPath, config.contentFile);
-    if (!fs.existsSync(contentFilePath)) {
-        console.log("Content file not found. Creating default content structure.");
-        const defaultContent = {
-            en: {
-                home: { title: "", subtitle: "", description: "", cta: "" },
-                present: { title: "", subtitle: "", description: "", cta: "" },
-                passerelles: { title: "", subtitle: "", description: "", cta: "" },
-                facettes: { title: "", subtitle: "", description: "", cta: "" },
-                about: { title: "", subtitle: "", description: "", cta: "" },
-                contact: { title: "", subtitle: "", description: "", cta: "" }
-            },
-            fr: {
-                home: { title: "", subtitle: "", description: "", cta: "" },
-                present: { title: "", subtitle: "", description: "", cta: "" },
-                passerelles: { title: "", subtitle: "", description: "", cta: "" },
-                facettes: { title: "", subtitle: "", description: "", cta: "" },
-                about: { title: "", subtitle: "", description: "", cta: "" },
-                contact: { title: "", subtitle: "", description: "", cta: "" }
-            }
-        };
-        fs.writeJsonSync(contentFilePath, defaultContent, { spaces: 2 });
-    }
-};
-
-initUsersFile();
-initContentFile();
 
 // Login routes
 app.get('/login', (req, res) => {
@@ -117,19 +135,17 @@ app.post('/login', async (req, res) => {
   console.log('Login attempt for:', username);
   
   try {
-    const users = fs.readJsonSync(path.join(config.dataPath, config.usersFile));
-    const user = users.find(u => u.username === username);
+    const user = await usersCollection.findOne({ username });
     
     if (user && await bcrypt.compare(password, user.password)) {
       req.session.user = { username: user.username, id: user.id };
-      console.log('Login successful, session:', req.session);
+      console.log('Login successful');
       
       req.session.save((err) => {
         if (err) {
           console.error('Session save error:', err);
           return res.redirect('/login?error=1');
         }
-        console.log('Session saved successfully');
         return res.redirect('/admin.html');
       });
     } else {
@@ -147,159 +163,133 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// Protect admin.html specifically
+// Protect admin routes
 app.get('/admin.html', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Admin route - also protected
 app.get('/admin', requireAuth, (req, res) => {
   res.redirect('/admin.html');
 });
 
 // --- ROOT ROUTE & LANGUAGE HANDLER ---
 app.get('/', (req, res) => {
-    if (!req.cookies.lang) {
-        res.cookie('lang', 'en', { maxAge: 3600000 * 24 * 30, httpOnly: true });
-    }
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  if (!req.cookies.lang) {
+    res.cookie('lang', 'en', { maxAge: 3600000 * 24 * 30, httpOnly: true });
+  }
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.post('/set-lang', (req, res) => {
-    const { lang } = req.body;
-    console.log('Setting language to:', lang);
-    if (['en', 'fr'].includes(lang)) {
-        res.cookie('lang', lang, { maxAge: 3600000 * 24 * 30, httpOnly: true });
-        return res.json({ success: true, lang });
-    }
-    res.status(400).json({ success: false, message: 'Invalid language' });
+  const { lang } = req.body;
+  console.log('Setting language to:', lang);
+  if (['en', 'fr'].includes(lang)) {
+    res.cookie('lang', lang, { maxAge: 3600000 * 24 * 30, httpOnly: true });
+    return res.json({ success: true, lang });
+  }
+  res.status(400).json({ success: false, message: 'Invalid language' });
 });
 
-// --- API routes ---
+// --- API ROUTES ---
 
-// Get content - handles both admin (with section/lang params) and frontend (with cookie)
-app.get('/api/content', (req, res) => {
+// Get content
+app.get('/api/content', async (req, res) => {
   const { section, lang } = req.query;
   
   try {
-    const contentFilePath = path.join(config.dataPath, config.contentFile);
-    console.log('Reading content from:', contentFilePath);
+    const contentDoc = await contentCollection.findOne({ _id: 'content' });
     
-    const content = fs.readJsonSync(contentFilePath);
-    console.log('Content file read successfully');
+    if (!contentDoc) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
     
     // If section and lang are specified, return specific section content (for admin)
     if (section && lang) {
       console.log(`Admin requesting: section=${section}, lang=${lang}`);
-      if (!content[lang]) {
-        content[lang] = {};
-      }
-      if (!content[lang][section]) {
-        content[lang][section] = { title: "", subtitle: "", description: "" };
-      }
-      console.log('Returning section content:', content[lang][section]);
-      return res.json(content[lang][section]);
+      const sectionContent = contentDoc[lang]?.[section] || {};
+      return res.json(sectionContent);
     }
     
     // Otherwise, return all content for the current language (for frontend)
     const currentLang = req.cookies.lang || 'en';
     console.log('Frontend requesting, language:', currentLang);
-    res.json(content[currentLang] || content.en);
+    res.json(contentDoc[currentLang] || contentDoc.en);
   } catch (error) {
     console.error('Error reading content:', error);
     res.status(500).json({ error: 'Failed to read content' });
   }
 });
 
-// Save content (Admin only) - ENHANCED WITH BETTER DEBUGGING
-app.post('/api/content', requireAuth, upload.single('image'), (req, res) => {
+// Save content (Admin only)
+app.post('/api/content', requireAuth, upload.single('image'), async (req, res) => {
   try {
     const { section, lang } = req.body;
-    const contentFilePath = path.join(config.dataPath, config.contentFile);
     
     console.log('========== SAVE CONTENT REQUEST ==========');
-    console.log('Authenticated user:', req.session.user);
-    console.log('Section:', section);
-    console.log('Language:', lang);
-    console.log('Body fields:', Object.keys(req.body));
-    console.log('Full body:', req.body);
-    console.log('Content file path:', contentFilePath);
+    console.log('Section:', section, 'Language:', lang);
+    console.log('User:', req.session.user.username);
     
-    // Check if file exists
-    if (!fs.existsSync(contentFilePath)) {
-      console.error('ERROR: Content file does not exist!');
-      return res.status(500).json({ success: false, error: 'Content file not found' });
+    // Get current content document
+    const contentDoc = await contentCollection.findOne({ _id: 'content' });
+    
+    if (!contentDoc) {
+      return res.status(404).json({ success: false, error: 'Content document not found' });
     }
     
-    // Read current content
-    console.log('Reading content file...');
-    const content = fs.readJsonSync(contentFilePath);
-    console.log('Content file read successfully');
-    console.log('Current content structure:', Object.keys(content));
-
-    // Ensure language and section structure exists
-    if (!content[lang]) {
-      console.log(`Creating language structure for: ${lang}`);
-      content[lang] = {};
+    // Ensure structure exists
+    if (!contentDoc[lang]) {
+      contentDoc[lang] = {};
     }
-    if (!content[lang][section]) {
-      console.log(`Creating section structure for: ${lang}.${section}`);
-      content[lang][section] = {};
+    if (!contentDoc[lang][section]) {
+      contentDoc[lang][section] = {};
     }
-
-    console.log('Before update:', JSON.stringify(content[lang][section], null, 2));
-
-    // Update all fields from the request body (except system fields)
+    
+    // Update fields
     let updatedFields = [];
     for (const key in req.body) {
       if (!['section', 'lang'].includes(key)) {
-        content[lang][section][key] = req.body[key];
+        contentDoc[lang][section][key] = req.body[key];
         updatedFields.push(key);
-        console.log(`✓ Updated ${key}:`, req.body[key].substring(0, 100) + (req.body[key].length > 100 ? '...' : ''));
+        console.log(`✓ Updated ${key}`);
       }
     }
-
-    // Handle image upload if present
+    
+    // Handle image upload
     if (req.file) {
-      content[lang][section].imageUrl = `/uploads/${req.file.filename}`;
+      contentDoc[lang][section].imageUrl = `/uploads/${req.file.filename}`;
       updatedFields.push('imageUrl');
       console.log('✓ Image uploaded:', req.file.filename);
     }
-
-    console.log('After update:', JSON.stringify(content[lang][section], null, 2));
-    console.log('Updated fields:', updatedFields);
-
-    // Write updated content back to file
-    console.log('Writing to file...');
-    try {
-      fs.writeJsonSync(contentFilePath, content, { spaces: 2 });
-      console.log('✓ Content written to file successfully!');
-      
-      // Verify the write
-      const verifyContent = fs.readJsonSync(contentFilePath);
-      console.log('Verification - file content after write:', JSON.stringify(verifyContent[lang][section], null, 2));
-      
-      console.log('========== SAVE SUCCESSFUL ==========');
-      res.json({ success: true, content: content[lang][section], updatedFields });
-    } catch (writeError) {
-      console.error('ERROR writing to file:', writeError);
-      return res.status(500).json({ success: false, error: 'Failed to write to file: ' + writeError.message });
-    }
+    
+    // Save to MongoDB
+    const result = await contentCollection.updateOne(
+      { _id: 'content' },
+      { $set: { [lang]: contentDoc[lang] } }
+    );
+    
+    console.log('MongoDB update result:', result.modifiedCount, 'documents modified');
+    console.log('✓ Content saved to MongoDB');
+    console.log('========== SAVE SUCCESSFUL ==========');
+    
+    res.json({ 
+      success: true, 
+      content: contentDoc[lang][section], 
+      updatedFields 
+    });
+    
   } catch (error) {
     console.error('========== SAVE FAILED ==========');
-    console.error('Error saving content:', error);
-    console.error('Stack trace:', error.stack);
+    console.error('Error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // --- USER MANAGEMENT API ROUTES ---
 
-// Get all users (Admin only)
-app.get('/api/users', requireAuth, (req, res) => {
+// Get all users
+app.get('/api/users', requireAuth, async (req, res) => {
   try {
-    const usersFilePath = path.join(config.dataPath, config.usersFile);
-    const users = fs.readJsonSync(usersFilePath);
+    const users = await usersCollection.find({}).toArray();
     const safeUsers = users.map(u => ({ id: u.id, username: u.username }));
     res.json({ success: true, users: safeUsers });
   } catch (error) {
@@ -308,7 +298,7 @@ app.get('/api/users', requireAuth, (req, res) => {
   }
 });
 
-// Add new user (Admin only)
+// Add new user
 app.post('/api/users', requireAuth, async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -321,10 +311,8 @@ app.post('/api/users', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
     }
     
-    const usersFilePath = path.join(config.dataPath, config.usersFile);
-    const users = fs.readJsonSync(usersFilePath);
-    
-    if (users.find(u => u.username === username)) {
+    const existingUser = await usersCollection.findOne({ username });
+    if (existingUser) {
       return res.status(400).json({ success: false, error: 'Username already exists' });
     }
     
@@ -335,8 +323,7 @@ app.post('/api/users', requireAuth, async (req, res) => {
       password: hashedPassword
     };
     
-    users.push(newUser);
-    fs.writeJsonSync(usersFilePath, users, { spaces: 2 });
+    await usersCollection.insertOne(newUser);
     
     console.log('New user created:', username);
     res.json({ success: true, user: { id: newUser.id, username: newUser.username } });
@@ -346,28 +333,25 @@ app.post('/api/users', requireAuth, async (req, res) => {
   }
 });
 
-// Delete user (Admin only)
-app.delete('/api/users/:id', requireAuth, (req, res) => {
+// Delete user
+app.delete('/api/users/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const usersFilePath = path.join(config.dataPath, config.usersFile);
-    const users = fs.readJsonSync(usersFilePath);
     
     if (req.session.user.id === id) {
       return res.status(400).json({ success: false, error: 'Cannot delete your own account' });
     }
     
-    if (users.length === 1) {
+    const userCount = await usersCollection.countDocuments();
+    if (userCount === 1) {
       return res.status(400).json({ success: false, error: 'Cannot delete the last user' });
     }
     
-    const updatedUsers = users.filter(u => u.id !== id);
+    const result = await usersCollection.deleteOne({ id });
     
-    if (updatedUsers.length === users.length) {
+    if (result.deletedCount === 0) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
-    
-    fs.writeJsonSync(usersFilePath, updatedUsers, { spaces: 2 });
     
     console.log('User deleted:', id);
     res.json({ success: true });
@@ -377,7 +361,7 @@ app.delete('/api/users/:id', requireAuth, (req, res) => {
   }
 });
 
-// Change password (Admin only)
+// Change password
 app.put('/api/users/:id/password', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
@@ -387,18 +371,18 @@ app.put('/api/users/:id/password', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
     }
     
-    const usersFilePath = path.join(config.dataPath, config.usersFile);
-    const users = fs.readJsonSync(usersFilePath);
+    const hashedPassword = await bcrypt.hash(password, 10);
     
-    const user = users.find(u => u.id === id);
-    if (!user) {
+    const result = await usersCollection.updateOne(
+      { id },
+      { $set: { password: hashedPassword } }
+    );
+    
+    if (result.matchedCount === 0) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
     
-    user.password = await bcrypt.hash(password, 10);
-    fs.writeJsonSync(usersFilePath, users, { spaces: 2 });
-    
-    console.log('Password changed for user:', user.username);
+    console.log('Password changed for user:', id);
     res.json({ success: true });
   } catch (error) {
     console.error('Error changing password:', error);
@@ -406,9 +390,10 @@ app.put('/api/users/:id/password', requireAuth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`Admin login - username: bettara, password: bettara123`);
-  console.log(`Data directory: ${config.dataPath}`);
-  console.log(`Content file: ${path.join(config.dataPath, config.contentFile)}`);
+// Start server after connecting to database
+connectToDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`✓ Server running on http://localhost:${PORT}`);
+    console.log(`✓ Admin login - username: bettara, password: bettara123`);
+  });
 });
