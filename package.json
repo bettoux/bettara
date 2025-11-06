@@ -7,6 +7,7 @@
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "fs-extra": "^11.3.2",
+    "mongodb": "^6.20.0",
     "multer": "^2.0.2",
     "path": "^0.12.7",
     "uuid": "^13.0.0"
@@ -15,7 +16,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
