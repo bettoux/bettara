@@ -103,7 +103,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // Changed: allow cookies over HTTP (Google Cloud handles HTTPS termination)
+    httpOnly: true,
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000
   }
 }));
@@ -226,22 +228,34 @@ app.post('/api/content', requireAuth, upload.single('image'), async (req, res) =
     const { section, lang } = req.body;
     
     console.log('========== SAVE CONTENT REQUEST ==========');
+    console.log('Session:', req.session);
+    console.log('User:', req.session?.user);
     console.log('Section:', section, 'Language:', lang);
-    console.log('User:', req.session.user.username);
+    console.log('Body keys:', Object.keys(req.body));
+    
+    if (!req.session || !req.session.user) {
+      console.error('No session found during save!');
+      return res.status(401).json({ success: false, error: 'Session lost' });
+    }
     
     // Get current content document
     const contentDoc = await contentCollection.findOne({ _id: 'content' });
     
     if (!contentDoc) {
+      console.error('Content document not found in database');
       return res.status(404).json({ success: false, error: 'Content document not found' });
     }
+    
+    console.log('Content document retrieved successfully');
     
     // Ensure structure exists
     if (!contentDoc[lang]) {
       contentDoc[lang] = {};
+      console.log(`Created language structure for: ${lang}`);
     }
     if (!contentDoc[lang][section]) {
       contentDoc[lang][section] = {};
+      console.log(`Created section structure for: ${lang}.${section}`);
     }
     
     // Update fields
@@ -250,7 +264,7 @@ app.post('/api/content', requireAuth, upload.single('image'), async (req, res) =
       if (!['section', 'lang'].includes(key)) {
         contentDoc[lang][section][key] = req.body[key];
         updatedFields.push(key);
-        console.log(`✓ Updated ${key}`);
+        console.log(`✓ Updated ${key}: ${req.body[key].substring(0, 50)}...`);
       }
     }
     
@@ -261,14 +275,27 @@ app.post('/api/content', requireAuth, upload.single('image'), async (req, res) =
       console.log('✓ Image uploaded:', req.file.filename);
     }
     
+    console.log('Attempting to save to MongoDB...');
+    
     // Save to MongoDB
     const result = await contentCollection.updateOne(
       { _id: 'content' },
       { $set: { [lang]: contentDoc[lang] } }
     );
     
-    console.log('MongoDB update result:', result.modifiedCount, 'documents modified');
-    console.log('✓ Content saved to MongoDB');
+    console.log('MongoDB update result:', {
+      matched: result.matchedCount,
+      modified: result.modifiedCount,
+      acknowledged: result.acknowledged
+    });
+    
+    if (result.matchedCount === 0) {
+      console.error('No document matched for update!');
+      return res.status(404).json({ success: false, error: 'Content document not found for update' });
+    }
+    
+    console.log('✓ Content saved to MongoDB successfully');
+    console.log('Updated fields:', updatedFields);
     console.log('========== SAVE SUCCESSFUL ==========');
     
     res.json({ 
@@ -279,7 +306,9 @@ app.post('/api/content', requireAuth, upload.single('image'), async (req, res) =
     
   } catch (error) {
     console.error('========== SAVE FAILED ==========');
-    console.error('Error:', error);
+    console.error('Error type:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({ success: false, error: error.message });
   }
 });
